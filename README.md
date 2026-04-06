@@ -9,7 +9,45 @@ A machine learning project that predicts whether a US domestic flight will be de
 - **Sample size:** 250,000 flights (stratified 80/20 train/test split)
 - **Target:** `delayed` — 1 if `ARRIVAL_DELAY ≥ 15 min`, else 0 (~18.6% positive rate)
 
-Place the three CSV files in `data/raw/` before running the pipeline.
+## Setup & Running
+
+**1. Clone the repo**
+```bash
+git clone <repo-url>
+cd flight-delay-prediction
+```
+
+**2. Install dependencies**
+```bash
+pip3 install pandas numpy scikit-learn xgboost lightgbm optuna shap \
+             matplotlib seaborn joblib streamlit plotly
+```
+
+> **macOS only:** XGBoost and LightGBM require OpenMP. If you see a `libomp.dylib` error, run `brew install libomp`.
+
+**3. Download the dataset**
+
+Download from [Kaggle](https://www.kaggle.com/datasets/usdot/flight-delays) and place the three files at:
+```
+data/raw/flights.csv
+data/raw/airlines.csv
+data/raw/airports.csv
+```
+
+**4. Run the pipeline**
+```bash
+python3 src/data_loader.py    # clean + sample 250K flights
+python3 src/feature_eng.py    # engineer features, export train/test splits
+python3 src/model.py          # train 4 models, save best
+python3 src/tune.py           # Optuna hyperparameter tuning (30 trials)
+```
+
+**5. Launch the dashboard**
+```bash
+streamlit run src/dashboard.py
+```
+
+Opens at `http://localhost:8501`. Steps `eda.py` and `evaluate.py` are optional — they generate the charts saved to `figures/`.
 
 ## Project Structure
 
@@ -19,9 +57,7 @@ flight-delay-prediction/
 │   ├── raw/                  # Source CSVs (not versioned)
 │   └── processed/            # Generated train/test splits (not versioned)
 ├── figures/                  # All saved charts (EDA, model evaluation, tuning)
-├── models/                   # Saved model artifacts
-│   ├── best_model.pkl
-│   └── best_model_tuned.pkl
+├── models/                   # Saved model artifacts (.pkl)
 ├── src/
 │   ├── data_loader.py        # Sampling, merging, cleaning, target creation
 │   ├── eda.py                # 7 exploratory visualisations
@@ -32,20 +68,6 @@ flight-delay-prediction/
 │   ├── optimizer.py          # Prescriptive booking optimizer
 │   └── dashboard.py          # Streamlit app
 └── .gitignore
-```
-
-## Pipeline
-
-Run steps in order:
-
-```bash
-python3 src/data_loader.py    # → data/processed/flights_clean.csv
-python3 src/eda.py            # → figures/  (7 charts)
-python3 src/feature_eng.py    # → data/processed/X_train, X_test, y_train, y_test
-python3 src/model.py          # → models/best_model.pkl  (comparison table)
-python3 src/tune.py           # → models/best_model_tuned.pkl  (Optuna, 30 trials)
-python3 src/evaluate.py       # → figures/  (confusion matrix, PR curve, SHAP)
-streamlit run src/dashboard.py
 ```
 
 ## Features (10)
@@ -72,30 +94,15 @@ streamlit run src/dashboard.py
 | XGBoost | 0.637 | 0.285 | 0.630 | 0.392 | **0.681** |
 | LightGBM | 0.621 | 0.277 | 0.645 | 0.388 | 0.676 |
 
-**XGBoost** selected as best model (highest AUC-ROC). After Optuna tuning (30 trials, 3-fold CV): AUC-ROC improved from 0.6812 → **0.6838**.
-
-Top SHAP features: `route_delay_rate`, `hour`, `carrier_delay_rate`.
+**XGBoost** selected as best model (highest AUC-ROC). After Optuna tuning (30 trials, 3-fold CV): AUC-ROC improved to **0.6838**. Top SHAP features: `route_delay_rate`, `hour`, `carrier_delay_rate`.
 
 ## Dashboard
 
-```bash
-streamlit run src/dashboard.py
-```
+Three sections accessible at `http://localhost:8501`:
 
-Three sections:
-
-- **Section 1 — Flight Reliability Explorer:** delay rate by carrier, hour, month, day of week, top 15 airports, and a scatter geo map of the US coloured by delay rate. All charts respond to sidebar airline/airport filters.
-- **Section 2 — Delay Predictor:** enter a specific flight (origin, destination, carrier, time) and get a predicted delay probability, colour-coded reliability badge, and top 3 risk factors.
+- **Section 1 — Flight Reliability Explorer:** delay rate by carrier, hour, month, day, top airports, and a US scatter-geo map coloured by delay rate. All charts respond to sidebar filters.
+- **Section 2 — Delay Predictor:** enter a specific flight and get a predicted delay probability with a colour-coded badge and top 3 risk factors.
 - **Section 3 — Smart Booking Optimizer:**
-  - *Optimal Flight* — finds the lowest-risk (carrier, departure hour) combination within a preferred time window and risk tolerance, with a sensitivity chart showing how many options open up as tolerance is relaxed.
-  - *Best Airlines* — ranks all carriers on a route by predicted delay %, subject to a minimum flight-frequency constraint.
+  - *Optimal Flight* — finds the lowest-risk (carrier, hour) combination within a preferred window and risk tolerance, with a sensitivity chart.
+  - *Best Airlines* — ranks all carriers on a route by predicted delay % subject to a minimum flight-frequency constraint.
   - *Best Airport* — compares origin airports in the same city (e.g. JFK / LGA / EWR) for a given route.
-
-## Dependencies
-
-```bash
-pip3 install pandas numpy scikit-learn xgboost lightgbm optuna shap \
-             matplotlib seaborn joblib streamlit plotly
-```
-
-XGBoost and LightGBM require `libomp` on macOS (`brew install libomp`).
