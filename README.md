@@ -9,96 +9,14 @@ A machine learning project that predicts whether a US domestic flight will be de
 - **Sample size:** 250,000 flights (stratified 80/20 train/test split)
 - **Target:** `delayed` — 1 if `ARRIVAL_DELAY ≥ 15 min`, else 0 (~18.6% positive rate)
 
-## Setup & Running
-
-**1. Clone the repo**
-```bash
-git clone <repo-url>
+## Running
+git clone https://github.com/aashpillutla/flight-delay-prediction.git
 cd flight-delay-prediction
-```
-
-**2. Install dependencies**
-```bash
-pip3 install pandas numpy scikit-learn xgboost lightgbm optuna shap \
-             matplotlib seaborn joblib streamlit plotly
-```
-
-> **macOS only:** XGBoost and LightGBM require OpenMP. If you see a `libomp.dylib` error, run `brew install libomp`.
-
-**3. Download the dataset**
-
-Download from [Kaggle](https://www.kaggle.com/datasets/usdot/flight-delays) and place the three files at:
-```
-data/raw/flights.csv
-data/raw/airlines.csv
-data/raw/airports.csv
-```
-
-**4. Run the pipeline**
-```bash
-python3 src/data_loader.py    # clean + sample 250K flights
-python3 src/feature_eng.py    # engineer features, export train/test splits
-python3 src/model.py          # train 4 models, save best
-python3 src/tune.py           # Optuna hyperparameter tuning (30 trials)
-```
-
-**5. Launch the dashboard**
-```bash
+pip install -r requirements.txt
 streamlit run src/dashboard.py
-```
 
-Opens at `http://localhost:8501`. Steps `eda.py` and `evaluate.py` are optional — they generate the charts saved to `figures/`.
-
-## Project Structure
-
-```
-flight-delay-prediction/
-├── data/
-│   ├── raw/                  # Source CSVs (not versioned)
-│   └── processed/            # Generated train/test splits (not versioned)
-├── figures/                  # All saved charts (EDA, model evaluation, tuning)
-├── models/                   # Saved model artifacts (.pkl)
-├── src/
-│   ├── data_loader.py        # Sampling, merging, cleaning, target creation
-│   ├── eda.py                # 7 exploratory visualisations
-│   ├── feature_eng.py        # Feature engineering + train/test export
-│   ├── model.py              # Train & compare 4 models
-│   ├── tune.py               # Optuna hyperparameter tuning (XGBoost)
-│   ├── evaluate.py           # Confusion matrix, PR curve, SHAP, error analysis
-│   ├── optimizer.py          # Prescriptive booking optimizer
-│   └── dashboard.py          # Streamlit app
-└── .gitignore
-```
-
-## Features (10)
-
-| Feature | Description |
-|---|---|
-| `hour` | Departure hour (0–23) extracted from `DEPARTURE_TIME` |
-| `time_of_day` | Ordinal: morning / afternoon / evening / night |
-| `day_of_week` | 1 (Mon) – 7 (Sun) |
-| `is_weekend` | 1 if Saturday or Sunday |
-| `month` | 1–12 |
-| `is_holiday` | 1 if date is a US federal holiday or eve/day-after |
-| `distance_bin` | short (<500 mi) / medium / long (>1500 mi) |
-| `carrier_delay_rate` | Historical delay rate for the airline (train set only) |
-| `origin_delay_rate` | Historical delay rate for the origin airport (train set only) |
-| `route_delay_rate` | Historical delay rate for the origin→destination pair (train set only) |
-
-## Model Comparison
-
-| Model | Accuracy | Precision | Recall | F1 | AUC-ROC |
-|---|---|---|---|---|---|
-| Logistic Regression | 0.630 | 0.269 | 0.575 | 0.367 | 0.646 |
-| Random Forest | 0.806 | 0.434 | 0.130 | 0.200 | 0.674 |
-| XGBoost | 0.637 | 0.285 | 0.630 | 0.392 | **0.681** |
-| LightGBM | 0.621 | 0.277 | 0.645 | 0.388 | 0.676 |
-
-**XGBoost** selected as best model (highest AUC-ROC). After Optuna tuning (30 trials, 3-fold CV): AUC-ROC improved to **0.6838**. Top SHAP features: `route_delay_rate`, `hour`, `carrier_delay_rate`.
 
 ## Dashboard
-
-Three sections accessible at `http://localhost:8501`:
 
 - **Section 1 — Flight Reliability Explorer:** delay rate by carrier, hour, month, day, top airports, and a US scatter-geo map coloured by delay rate. All charts respond to sidebar filters.
 - **Section 2 — Delay Predictor:** enter a specific flight and get a predicted delay probability with a colour-coded badge and top 3 risk factors.

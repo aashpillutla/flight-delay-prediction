@@ -46,7 +46,6 @@ Thumbs.db
 
 # Data (large generated files, not versioned)
 data/raw/
-data/processed/
 
 # Logs
 *.log
