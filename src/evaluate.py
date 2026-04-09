@@ -124,6 +124,8 @@ def plot_shap(model, X_test):
 
     # Top 2 features by mean |SHAP|
     mean_abs = np.abs(shap_values).mean(axis=0)
+    for feat, val in sorted(zip(X_sample.columns, mean_abs), key=lambda x: -x[1]):
+        print(f"  {feat:<25} {val:.3f}")
     top2_idx = np.argsort(mean_abs)[::-1][:2]
     top2_features = X_sample.columns[top2_idx].tolist()
 
